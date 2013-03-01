@@ -72,13 +72,13 @@
   </triggers>
   <concurrentBuild>false</concurrentBuild>
   <builders>
+
     <hudson.tasks.Shell>
-      <command>
-export DISPLAY=:1
+      <command>export DISPLAY=:1
 Xvfb :1 &amp;
 
 #
-# Fetch node and testacular if we don't have it already
+# Fetch and install the dependencies
 #
 
 node_version=v0.8.14
@@ -89,66 +89,43 @@ if [ ! -e $install_name.tar.gz ]
 then
     wget http://nodejs.org/dist/$node_version/$install_name.tar.gz
     tar xf $install_name.tar.gz
-    $node_home/bin/npm install -g testacular
+    git clone git://github.com/meteor/meteor.git
+    wget https://selenium.googlecode.com/files/selenium-server-standalone-2.31.0.jar
 fi
 
-# 
-# run the Angular.js tests (using a browser on the build server)
-#
-
 export PATH=$PATH:$node_home/bin
-scripts/test.sh  --single-run --browsers="Chrome,Firefox" --reporters="dots,junit" --no-colors
 
 #
-# run the Angular.js e2e tests (this requires a server too)
+# run the Integration tests (this requires a server running)
 #
 
-node scripts/web-server.js &gt; /dev/null &amp;
-NODE_PID=$!
-scripts/e2e-test.sh --single-run --browsers="Chrome,Firefox" --reporters="dots,junit" --no-colors
-kill -s TERM $NODE_PID
+cd $WORKSPACE/todos
+$WORKSPACE/meteor/meteor &gt; /dev/null &amp;
+METEOR_PID=$!
+
+cd $WORKSPACE/tests
+npm install webdriverjs
+node integration.js
+kill -s TERM $METEOR_PID
+
 
 
 #
-# package the app for the CloudBees node.js stack (deployer picks it up)
+# Meteor bundle and rezip for cloudbees
 # 
 
-# Firstly, we are going to throw in a little express.js static web server
-# for fun ! can probably replace the one in the upstream
-# ideally - if angular folks agree.
+cd $WORKSPACE
+rm -rf bundle bundle.tar.gz
+cd todos
+$WORKSPACE/meteor/meteor bundle ../bundle.tar.gz
 
-cat > "app/package.json" &lt;&lt; EOF
-  {
-    "name": "hello-world",
-    "description": "hello world test app",
-    "version": "0.0.1",
-    "private": true,
-    "dependencies": {
-      "express": "3.x",
-      "connect" : "2.x" 
-    }
-  }
-EOF
-
-cat > "app/main.js" &lt;&lt; EOF
-  var express = require('express');
-  var connect = require('connect');
-  var app = express();
-  app.use(connect.compress());
-  console.log(__dirname);
-  app.use(express.static(__dirname + '/'));
-  app.listen(process.env.PORT);
-EOF
-
-
-cd app
-npm install
-
+cd $WORKSPACE
+tar xf bundle.tar.gz
+cd bundle
+rm -rf ../target
 mkdir -p ../target
 rm -rf ../target/app.zip
-zip -r ../target/app.zip *
-
-</command>
+zip -r ../target/app.zip *</command>
     </hudson.tasks.Shell>
     <com.cloudbees.plugins.deployer.DeployBuilder>
       <configuration>
