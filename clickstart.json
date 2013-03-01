@@ -1,0 +1,44 @@
+{
+    "id": "meteor-clickstart",
+    "name": "Meteor realtime framework with MongoDB",
+    "source": "github",
+    "description" : "Creates sample todo app, with browser based automated test, and MongoDB backend",
+    "icon" : "https://d3ko533tu1ozfq.cloudfront.net/clickstart/nodejs_large.png",    
+
+    "supported-by" : "community",
+    "order" : 2,
+
+    "runtime": {
+        "type": "nodejs",
+         "app-parameters" : { 
+            "runtime.PLUGIN.SRC.nodejs": "https://s3.amazonaws.com/clickstacks/admin/nodejs-plugin-0.8.16.zip"
+        },
+        "app-variables" : {
+            "MONGO_URL" : "$MONGOHQ_URL_METEOR"
+        }
+    },
+        
+    
+   "services" : [
+     {
+      "name" : "mongohq",
+      "plan" : "base",
+      "settings" : {},
+         "resources" : [
+            {
+                "type" : "mongodb",
+                "alias" : "METEOR",
+                "settings" : { "plan" : "sandbox" }
+            }
+         ]
+     }     
+     ],    
+    
+    "build-with-jenkins": {
+    "template": {
+            "type": "https://raw.github.com/michaelneale/meteor-clickstart/master/jenkins.xml",
+            "options": {
+            }            
+        }
+    }
+}
