@@ -72,7 +72,6 @@
   </triggers>
   <concurrentBuild>false</concurrentBuild>
   <builders>
-
     <hudson.tasks.Shell>
       <command>export DISPLAY=:1
 Xvfb :1 &amp;
@@ -90,8 +89,11 @@ then
     wget -nv http://nodejs.org/dist/$node_version/$install_name.tar.gz
     tar xf $install_name.tar.gz
     git clone git://github.com/meteor/meteor.git
-    wget -nv https://selenium.googlecode.com/files/selenium-server-standalone-2.31.0.jar
     meteor/meteor --version
+    cd tests
+    git clone https://github.com/jgonera/webspecter.git --recursive
+    $node_home/bin/npm install phantomjs
+
 fi
 
 
@@ -100,13 +102,6 @@ fi
 #
 
 
-# Start selenium
-
-java -jar $WORKSPACE/selenium-server-standalone-2.31.0.jar -host 127.0.0.1 &gt; /dev/null &amp;
-WEBDRIVER_PID=$!
-until curl http://localhost:4444/wd/hub; do                                                                                                                                                                 
-     sleep 2                                                                                                                                                                                                
-done 
 
 # Start meteor app
 
@@ -118,13 +113,12 @@ sleep 5
 
 
 # run integration tests and shutdown
-
 cd $WORKSPACE/tests
-$node_home/bin/npm install webdriverjs
-$node_home/bin/node integration.js
+PATH=$PATH:node_modules/phantomjs/bin
+PATH=$PATH:$node_home/bin
+PATH=$PATH:webspecter/bin
+webspecter -R xunit integration.coffee &gt; $WORKSPACE/test.out.xml
 kill -s TERM $METEOR_PID
-kill -s TERM $WEBDRIVER_PID
-
 
 
 
@@ -162,6 +156,12 @@ zip -rq ../target/app.zip *</command>
       </configuration>
     </com.cloudbees.plugins.deployer.DeployBuilder>
   </builders>
-  <publishers/>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver>
+      <testResults>test.out.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+    </hudson.tasks.junit.JUnitResultArchiver>
+  </publishers>
   <buildWrappers/>
 </project>
